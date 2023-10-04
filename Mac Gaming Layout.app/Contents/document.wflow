@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>AMApplicationBuild</key>
+	<string>523</string>
+	<key>AMApplicationVersion</key>
+	<string>2.10</string>
+	<key>AMDocumentVersion</key>
+	<string>2</string>
+	<key>actions</key>
+	<array>
+		<dict>
+			<key>action</key>
+			<dict>
+				<key>AMAccepts</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Optional</key>
+					<true/>
+					<key>Types</key>
+					<array>
+						<string>com.apple.applescript.object</string>
+					</array>
+				</dict>
+				<key>AMActionVersion</key>
+				<string>1.0.2</string>
+				<key>AMApplication</key>
+				<array>
+					<string>Automator</string>
+				</array>
+				<key>AMParameterProperties</key>
+				<dict>
+					<key>source</key>
+					<dict/>
+				</dict>
+				<key>AMProvides</key>
+				<dict>
+					<key>Container</key>
+					<string>List</string>
+					<key>Types</key>
+					<array>
+						<string>com.apple.applescript.object</string>
+					</array>
+				</dict>
+				<key>ActionBundlePath</key>
+				<string>/System/Library/Automator/Run AppleScript.action</string>
+				<key>ActionName</key>
+				<string>Run AppleScript</string>
+				<key>ActionParameters</key>
+				<dict>
+					<key>source</key>
+					<string>global automatorTitleset automatorTitle to "Mac Gaming Layout"# Variables# controlKeyMap: 'Control' keyboard key corresponds to item '2' in the list# globeKeyMap: 'Globe' keyboard key corresponds to item '5' in the listset gamingKeyboardSettings to {globeKeyAction:"Do Nothing", enableStandardFnKeys:true, controlKeyMap:5, globeKeyMap:2}set defaultKeyboardSettings to {globeKeyAction:"Change Input Source", enableStandardFnKeys:false, controlKeyMap:2, globeKeyMap:5}set gamingTrackpadSettings to {ingoreBuiltInTrackPad:true}set defaultTrackpadSettings to {ingoreBuiltInTrackPad:false}# Create a state file to track the current keyboard and trackpad configurationset stateFile to "/Users/" &amp; short user name of (system info) &amp; "/Documents/mac_gaming_layout_state_file.txt"# Notify user of the app progresson userNotification(message)	delay 0.5	display notification message with title automatorTitleend userNotification# Function to check file existence, set up value, and write the updated value to the fileon checkFileAndSetValue(stateFilePath)		# Check if the file exists using System Events	tell application "System Events"				if not (exists file stateFilePath) then			# File doesn't exist, create it...						set fileValue to true						my userNotification("State file created: " &amp; stateFilePath)		end if				if (exists file stateFilePath) then			# Read the content of the file			set fileRef to (open for access (POSIX file stateFilePath))			set fileContent to (read fileRef)			close access fileRef						my userNotification("Reading state from file: " &amp; stateFilePath)						set currentState to (fileContent as boolean)						if currentState then				set messagePrefix to "Disabling"			else				set messagePrefix to "Enabling"			end if						display dialog messagePrefix &amp; " Mac Gaming Layout, would you like to continue? Action will auto-continue in 5 seconds." buttons {"Cancel", "Continue"} default button "Continue" cancel button "Cancel" with icon note giving up after 5						# Toggle 			set fileValue to not (fileContent as boolean)					end if								# Write the updated value to the file		set fileRef to (open for access (POSIX file stateFilePath) with write permission)		set eof fileRef to 0		write (fileValue as text) to fileRef		close access fileRef			end tell		#userNotification(messagePrefix &amp; " Mac Gaming Layout, please wait..")		return fileValue	end checkFileAndSetValue# Modify Accessibility Pointer Control settings:# - Toggle built-in TrackPad behavioron modifyAccessibilityPointerControl(accessibilityPointerControlSettings)		userNotification("Modifying Accessibility Pointer Control..")		# Unpack the Record	set {ingoreBuiltInTrackPad:ingoreBuiltInTrackPad} to accessibilityPointerControlSettings		open location "x-apple.systempreferences:com.apple.Accessibility-Settings.extension"		tell application "System Events" to tell process "System Settings"		set frontmost to true				# Wait for "Accessibility" window to exist		repeat until window begins with "Accessibility" exists		end repeat				# Wait until "Accessibility" window is the main window of the application and is accessible		repeat until exists of (1st window whose value of attribute "AXMain" is true)		end repeat				# Wait for "Pointer Control" button to exist		repeat until button 3 of group 3 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Accessibility" exists		end repeat				# Move to "Pointer Control" menu		tell button 3 of group 3 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Accessibility"			click		end tell				# Wait for "Pointer Control" window		repeat until window "Pointer Control" exists		end repeat				# Set the checkbox		set theCheckbox to checkbox 2 of group 1 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Pointer Control"		tell theCheckbox			set checkboxStatus to value of theCheckbox as boolean			if checkboxStatus is not ingoreBuiltInTrackPad then click theCheckbox		end tell				# Unfortunately delay is required so UI will render correctly		# If you know how to avoid it more elegantly, please let me know via github issues or LinkedIn		delay 0.5			end tell		tell application "System Settings" to quit		# Unfortunately delay is required so we can run another function	delay 0.5	end modifyAccessibilityPointerControl# Modify Keyboard settings: # - Toggle "Fn (Globe)" action# - Swap "Fn (Globe)" and "Control" buttons# - Toggle "Use F1, F2, etc. keys as standard function keys"on modifyKeyboard(keyboardSettings)		userNotification("Modifying Keyboard..")		# Unpack the Record	set {globeKeyAction:globeKeyAction, enableStandardFnKeys:enableStandardFnKeys, controlKeyMap:controlKeyMap, globeKeyMap:globeKeyMap} to keyboardSettings		open location "x-apple.systempreferences:com.apple.Keyboard-Settings.extension"		tell application "System Events" to tell process "System Settings"				set frontmost to true				# Wait for "Keyboard" window to exist		repeat until window begins with "Keyboard" exists		end repeat				# Wait until "Keyboard" window is the main window of the application and is accessible		repeat until exists of (1st window whose value of attribute "AXMain" is true)		end repeat				# Toggle "Globe" key input switch		repeat until pop up button 2 of group 2 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Keyboard" exists		end repeat				tell pop up button 2 of group 2 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Keyboard"			click			tell menu 1				click menu item globeKeyAction			end tell		end tell				# Unfortunately delay is required so UI will render correctly		# If you know how to avoid it more elegantly, please let me know via github issues or LinkedIn		delay 0.5				# Wait for "Keyboard Shortcuts..." button to exist		repeat until button 3 of group 2 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Keyboard" exists		end repeat				# Click "Keyboard Shortcuts..." button		click button 3 of group 2 of scroll area 1 of group 1 of group 2 of splitter group 1 of group 1 of window "Keyboard"				# Wait for "sheet 1" to exist		repeat until sheet 1 of window 1 exists		end repeat				# Toggle "Use F1, F2, etc. keys as standard function keys"				# Wait for "Function Keys" row to exist		repeat until row 12 of outline 1 of scroll area 1 of group 1 of splitter group 1 of group 1 of sheet 1 of window "Keyboard" exists		end repeat				# Select "Function Keys" row		select row 12 of outline 1 of scroll area 1 of group 1 of splitter group 1 of group 1 of sheet 1 of window "Keyboard"				set theCheckbox to checkbox 1 of group 1 of scroll area 1 of group 2 of splitter group 1 of group 1 of sheet 1 of window "Keyboard"		tell theCheckbox			set checkboxStatus to value of theCheckbox as boolean			if checkboxStatus is not enableStandardFnKeys then click theCheckbox		end tell				# Wait for "Modifier Keys" row to exist		repeat until row 13 of outline 1 of scroll area 1 of group 1 of splitter group 1 of group 1 of sheet 1 of window "Keyboard" exists		end repeat				# Modify mappings 		# Select "Modifier Keys" row		select row 13 of outline 1 of scroll area 1 of group 1 of splitter group 1 of group 1 of sheet 1 of window "Keyboard"				# Unfortunately delay is required so UI will render correctly		# If you know how to avoid it more elegantly, please let me know via github issues or LinkedIn		delay 0.5				# Select Internal Keyboard		tell group 1 of scroll area 1 of group 2 of splitter group 1 of group 1 of sheet 1 of window "Keyboard"			tell pop up button 1				click				tell menu 1					click menu item "Apple Internal Keyboard / Trackpad" # keep as it is as index might change				end tell							end tell		end tell				# Unfortunately delay is required so UI will render correctly		# If you know how to avoid it more elegantly, please let me know via github issues or LinkedIn		delay 0.5				# Swap Control &amp; Globe buttons		tell group 2 of scroll area 1 of group 2 of splitter group 1 of group 1 of sheet 1 of window "Keyboard"						# Control button			tell pop up button 2				click				tell menu 1					click menu item controlKeyMap				end tell							end tell						# Unfortunately delay is required so UI will render correctly			# If you know how to avoid it more elegantly, please let me know via github issues or LinkedIn			delay 0.5						# Globe button			tell pop up button 5				click				tell menu 1					click menu item globeKeyMap				end tell			end tell		end tell				# Unfortunately delay is required so UI will render correctly		# If you know how to avoid it more elegantly, please let me know via github issues or LinkedIn		delay 0.5				# Click "Done" Button		click button 2 of group 2 of splitter group 1 of group 1 of sheet 1 of window "Keyboard"						# Attempting to check the sheet at a certain point while closing will throw an error		# In that case, the outer repeat will try again		repeat			try				repeat while sheet 1 of window 1 exists				end repeat				exit repeat			end try		end repeat			end tell		tell application "System Settings" to quit		# Unfortunately delay is required so we can run another function	delay 0.5	end modifyKeyboardtry	userNotification("Configuration started!")		# Call the function to check file existence, set up the value, and write the updated value to the file	set fileValue to checkFileAndSetValue(stateFile)		if fileValue then		modifyAccessibilityPointerControl(gamingTrackpadSettings)		modifyKeyboard(gamingKeyboardSettings)			else		modifyAccessibilityPointerControl(defaultTrackpadSettings)		modifyKeyboard(defaultKeyboardSettings)	end if		userNotification("Configuration finished!")	on error errorMessage	userNotification("An error occurred: " &amp; errorMessage)end try</string>
+				</dict>
+				<key>BundleIdentifier</key>
+				<string>com.apple.Automator.RunScript</string>
+				<key>CFBundleVersion</key>
+				<string>1.0.2</string>
+				<key>CanShowSelectedItemsWhenRun</key>
+				<false/>
+				<key>CanShowWhenRun</key>
+				<true/>
+				<key>Category</key>
+				<array>
+					<string>AMCategoryUtilities</string>
+				</array>
+				<key>Class Name</key>
+				<string>RunScriptAction</string>
+				<key>InputUUID</key>
+				<string>0D7FC032-C5E2-4862-86CE-4A137063ED1C</string>
+				<key>Keywords</key>
+				<array>
+					<string>Run</string>
+				</array>
+				<key>OutputUUID</key>
+				<string>69A46292-698D-4865-8334-406BC6D6C853</string>
+				<key>UUID</key>
+				<string>B529BB21-CF7C-4CBE-B4B8-DA53433C2A23</string>
+				<key>UnlocalizedApplications</key>
+				<array>
+					<string>Automator</string>
+				</array>
+				<key>arguments</key>
+				<dict>
+					<key>0</key>
+					<dict>
+						<key>default value</key>
+						<string>on run {input, parameters}
+	
+	(* Your script goes here *)
+	
+	return input
+end run</string>
+						<key>name</key>
+						<string>source</string>
+						<key>required</key>
+						<string>0</string>
+						<key>type</key>
+						<string>0</string>
+						<key>uuid</key>
+						<string>0</string>
+					</dict>
+				</dict>
+				<key>isViewVisible</key>
+				<integer>1</integer>
+				<key>location</key>
+				<string>565.000000:755.000000</string>
+				<key>nibPath</key>
+				<string>/System/Library/Automator/Run AppleScript.action/Contents/Resources/Base.lproj/main.nib</string>
+			</dict>
+			<key>isViewVisible</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>connectors</key>
+	<dict/>
+	<key>workflowMetaData</key>
+	<dict>
+		<key>workflowTypeIdentifier</key>
+		<string>com.apple.Automator.application</string>
+	</dict>
+</dict>
+</plist>
